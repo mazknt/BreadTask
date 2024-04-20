@@ -6,12 +6,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"task1/task1/cmd/model"
+	"task1/task1/cmd/entity/dto"
+	"task1/task1/cmd/entity/model"
 )
 
 type ContentfulAPI interface {
-	GetBreadInformation() ([]model.Bread, error)
+	GetAllBreadsInformation(spaceID string, entryIDList []string, accessToken string) ([]model.Bread, error)
 }
 
 type ContentfulAPIImpl struct{}
@@ -19,48 +19,39 @@ type ContentfulAPIImpl struct{}
 /**
  * Contentfulからパンの情報を取得し返却
  */
-func (a ContentfulAPIImpl) GetBreadInformation() ([]model.Bread, error) {
-
-	// パラメータの用意
-	space_id := os.Getenv("SPACE_ID")
-	entry_id_list := []string{}
-	entry_id_list = append(entry_id_list, os.Getenv("HONEY_SOY_CRAN"))
-	entry_id_list = append(entry_id_list, os.Getenv("BLACK_SESAME_POTE"))
-	entry_id_list = append(entry_id_list, os.Getenv("SHICHIMI_SALT_FOCACCIA"))
-	access_token := os.Getenv("ACCESS_TOKEN")
-
+func (a ContentfulAPIImpl) GetAllBreadsInformation(spaceID string, entryIDList []string, accessToken string) ([]model.Bread, error) {
+	log.Println("GetAllBreadsInformation Start")
 	var breads []model.Bread
 	// 各entry idに対してリクエストを送る
-	for _, entry_id := range entry_id_list {
+	for _, entryID := range entryIDList {
 		// リクエスト
-		url := fmt.Sprintf("https://cdn.contentful.com/spaces/%s/entries/%s?access_token=%s", space_id, entry_id, access_token)
+		url := fmt.Sprintf("https://cdn.contentful.com/spaces/%s/entries/%s?access_token=%s", spaceID, entryID, accessToken)
 		resp, httpError := http.Get(url)
 		if httpError != nil {
 			log.Println("failed to Get contentful:", httpError)
-			return []model.Bread{}, httpError
+			return nil, httpError
 		}
 		defer resp.Body.Close()
 		body, readBodyError := ioutil.ReadAll(resp.Body)
 		if readBodyError != nil {
 			fmt.Println("Error:", readBodyError)
-			return []model.Bread{}, readBodyError
+			return nil, readBodyError
 		}
 
 		// 結果を配列に格納
-		var res model.ContentfulResponse
+		var res dto.GetBreadInfoResponse
 		unmarshalError := json.Unmarshal(body, &res)
 		if unmarshalError != nil {
 			fmt.Println("Error unmarshalling json:", unmarshalError)
-			return []model.Bread{}, unmarshalError
+			return nil, unmarshalError
 		}
 		bread := model.Bread{
-			ID: res.Sys.ID,
-			BreadInfo: model.BreadInfo{
-				Name:      res.Fields.Name,
-				CreatedAt: res.Sys.CreatedAt,
-			},
+			ID:        res.Sys.ID,
+			Name:      res.Fields.Name,
+			CreatedAt: res.Sys.CreatedAt,
 		}
 		breads = append(breads, bread)
 	}
+	log.Println("GetAllBreadsInformation Success")
 	return breads, nil
 }

@@ -1,8 +1,8 @@
-package model
+package dto
 
 import "time"
 
-type ContentfulResponse struct {
+type GetBreadInfoResponse struct {
 	Sys    Sys    `json:"sys"`
 	Fields Fields `json:"fields"`
 }

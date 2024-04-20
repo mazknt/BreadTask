@@ -5,8 +5,10 @@ package cmd
 
 import (
 	"log"
+	"task1/task1/cmd/config"
 	"task1/task1/cmd/interface/api"
 	"task1/task1/cmd/interface/repository"
+	"task1/task1/cmd/usecase"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
@@ -24,24 +26,20 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("fetchBread called")
-		contentfulAPI := api.ContentfulAPIImpl{}
-		firestore := repository.FirestoreImpl{}
-
-		// パン情報の取得
-		breadInformations, getBreadInformationError := contentfulAPI.GetBreadInformation()
-		if getBreadInformationError != nil {
-			log.Println("getBreadInformationError:", getBreadInformationError)
+		fetchBreadService := usecase.FetchBreadServiceImpl{
+			Firestore:     repository.FirestoreImpl{},
+			ContentfulAPI: api.ContentfulAPIImpl{},
 		}
 
-		// パン情報をDBに保存
-		for _, bread := range breadInformations {
-			setBreadError := firestore.SetBread(bread)
-			if setBreadError != nil {
-				log.Println("setBreadError:", setBreadError)
-			}
+		getBreadInfoFromContentfulAndSaveError := fetchBreadService.GetBreadInfoFromContentfulAndSave()
+		if getBreadInfoFromContentfulAndSaveError != nil {
+			log.Println("getBreadInfoFromContentfulAndSaveError:", getBreadInfoFromContentfulAndSaveError)
+			return
 		}
+		log.Println("fetchBread successed")
 	},
 }
+var AppConfig config.Config
 
 func init() {
 	rootCmd.AddCommand(fetchBreadCmd)
@@ -50,6 +48,8 @@ func init() {
 		log.Println("loadEnvError:", loadEnvError)
 		return
 	}
+	config.LoadConfig()
+
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
